@@ -1,5 +1,6 @@
-import { getTodosPosts, criarPost } from "../models/postModel.js";
+import { getTodosPosts, criarPost, atualizarPost} from "../models/postModel.js";
 import fs from "fs";
+import gerarDescricaoComGemini from "../services/gemini/geminiService.js"
 
 export async function listarPosts(req, res) {
     // Chama a função para obter todos os posts
@@ -24,9 +25,9 @@ export async function postarNovoPost(req, res) {
 export async function uploadImagem(req, res) {
     // tudo que vier no body da requisição ficará disponível na variável novoPost
     const novoPost = {
-        descricao: req.body.descricao,
+        descricao: "",
         imgUrl: req.file.originalname,
-        alt: req.body.alt
+        alt: ""
     };
     
     //tratativa de erros
@@ -38,5 +39,28 @@ export async function uploadImagem(req, res) {
     } catch(erro) { //grava automaticamente o erro, se houver, na variavel erro
         console.error(erro.message); //devolve erro emdetalhes para o console
         res.status(500).json({"Erro":"Falha na requisição"}) //erro que aparece pra o usuário
+    }
+}
+
+export async function atualizarNovoPost(req, res) {
+
+    const id = req.params.id;
+    const urlImagem = `http://localhost:3000/${id}.png`    
+    
+    try { 
+        const imgBuffer = fs.readFileSync(`uploads/${id}.png`)
+        const descricao = await gerarDescricaoComGemini(imgBuffer)
+
+        const post = {
+            imgUrl: urlImagem,
+            descricao: descricao,
+            alt: req.body.alt
+        }
+
+        const postCriado = await atualizarPost(id, post); 
+        res.status(200).json(postCriado);
+    } catch(erro) { 
+        console.error(erro.message); 
+        res.status(500).json({"Erro":"Falha na requisição"})
     }
 }
